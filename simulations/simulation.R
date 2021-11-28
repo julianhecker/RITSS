@@ -115,7 +115,7 @@ for(i in 1:n_rep)
 		
 		####################################################
 		### RITSS
-		ritss_obj=ritss(y, x, e, z, i1, i2, i3, config$cut_off_p_value, verbose=config$sim_verbose)
+		ritss_obj=ritss(y, x, e, z, i1, i2, i3, cut_off_p_value=0.05, verbose=FALSE)
 		################################################
 		
 		### REG and REG-robust
