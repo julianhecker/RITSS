@@ -26,10 +26,26 @@
 
 ritss=function(y, x, e, z, ii1, ii2, ii3, cut_off_p_value=0.05, screening_function=screening_subprs, indices_env_factors=1, verbose=FALSE)
 {
+	###-- update 4/11/2022
+	if(!is.numeric(y)) stop("y is not a numeric vector.")
+	if(var(y)==0) stop("y has no variation.")
+	
+    if(class(x)[1]!= "matrix") stop("x is not a matrix.")
+	if(class(e)[1]!= "matrix") stop("e is not a matrix.")
+	if(class(z)[1]!= "matrix") stop("z is not a matrix.")
+	if(length(ii1)<100 | length(ii1)<100 | length(ii1)<100) stop("sub samples ii1, ii2, or ii3 too small (<100).")
+	
+    m=ncol(x); d=ncol(e); p=ncol(z); n=length(y);
+	if(m<10) stop("please provide at least 10 genetic variants/SNPs.")
+
+	if(n!=nrow(x) | n!=nrow(e) | n!=nrow(z)) stop("row dimension of x, e, or z does not match length of y.")
+	if(!(indices_env_factors %in% 1:d)) stop("indices_env_factors invalid.")
+	
     y_1=y[ii1]; y_2=y[ii2]; y_3=y[ii3];
 	x_1=as.matrix(x[ii1,]); x_2=as.matrix(x[ii2,]); x_3=as.matrix(x[ii3,]);
 	e_1=as.matrix(e[ii1,]); e_2=as.matrix(e[ii2,]); e_3=as.matrix(e[ii3,]);
 	z_1=as.matrix(z[ii1,]); z_2=as.matrix(z[ii2,]); z_3=as.matrix(z[ii3,]);
+	###--
 	
 	obj1=ritss_sub(x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, x_3, e_3, z_3, y_3, cut_off_p_value, screening_function, indices_env_factors, verbose)
 	obj2=ritss_sub(x_3, e_3, z_3, y_3, x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, cut_off_p_value, screening_function, indices_env_factors, verbose)
@@ -177,7 +193,7 @@ screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, ve
   
    
    ind_var=tmp$indices_snps[tmp$vars>1/nrow(tmp)] # keep only variants with reasonable variance
-   
+   if(length(ind_var)<10){ ind_var=tmp$indices_snps; }###-- update 4/11/2022
    best_subset_reg=best_subset_reg(yr, xe_r[,ind_var], length(ind_var), num_iterations=10, verbose)
    
    num_indices=1
