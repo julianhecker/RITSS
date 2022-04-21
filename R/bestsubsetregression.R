@@ -1,5 +1,6 @@
 ######################################
-###	Implementation of approximate best subset regression algorithm, see section 3 of BY BERTSIMAS, KING, MAZUMDER Ann. Statist. 44(2): 813-852 (April 2016). DOI: 10.1214/15-AOS1388
+###	Implementation of approximate best subset regression algorithm, 
+### see section 3 of BY BERTSIMAS, KING, MAZUMDER Ann. Statist. 44(2): 813-852 (April 2016). DOI: 10.1214/15-AOS1388
 ##############################################################################
 
 

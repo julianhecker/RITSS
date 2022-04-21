@@ -1,6 +1,6 @@
 Package: RITSS
 Title: Robust Interaction Testing using Sample Splitting
-Version: 0.0.0.9000
+Version: 1.0.0.0
 Authors@R: 
     person("Julian", "Hecker", , "hecker.julian@gmail.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-7918-089X"))

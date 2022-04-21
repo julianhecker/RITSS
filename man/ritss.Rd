@@ -43,7 +43,7 @@ ritss(
 }
 \value{
 list of objects including RITSS p-value, corresponding z-score. Also individual z-scores of the three substatistics, the three interaction scores,
-and information about the selected variants.
+and information about the selected variants. z_1, z_2, and z_3 are the z-scores of the three sub statistics. Ui_1 and snps_in_score_i1 correspond to screening step that was performed in I_1 and tested in I_3.
 }
 \description{
 RITSS

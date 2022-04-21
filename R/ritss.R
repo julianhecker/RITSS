@@ -13,7 +13,7 @@
 #' @param verbose default is FALSE. If TRUE, RITSS outputs more details.
 #'
 #' @return list of objects including RITSS p-value, corresponding z-score. Also individual z-scores of the three substatistics, the three interaction scores, 
-#' and information about the selected variants.
+#' and information about the selected variants. z_1, z_2, and z_3 are the z-scores of the three sub statistics. Ui_1 and snps_in_score_i1 correspond to screening step that was performed in I_1 and tested in I_3.
 #' @export
 #'
 #' @examples
@@ -29,6 +29,7 @@ ritss=function(y, x, e, z, ii1, ii2, ii3, cut_off_p_value=0.05, screening_functi
 	###-- update 4/11/2022
 	if(!is.numeric(y)) stop("y is not a numeric vector.")
 	if(var(y)==0) stop("y has no variation.")
+	if(length(unique(y))<=5) stop("current implementation is designed for quantitative traits. y seems so to be discrete.")
 	
     if(class(x)[1]!= "matrix") stop("x is not a matrix.")
 	if(class(e)[1]!= "matrix") stop("e is not a matrix.")
