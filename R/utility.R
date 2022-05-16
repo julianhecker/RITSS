@@ -173,12 +173,12 @@ create_lasso_matrix_scores_x_e_z_simple=function(scores, x, e, z, x_p, e_p, z_p)
    for(i in 1:ncol(e))
    {
       if(length(unique(e[,i]))>2){ mat=cbind(mat, (e[,i]-mean(e[,i]))**2); }
-	  if(length(unique(e[,i]))>2) mat_p=cbind(mat_p, (e_p[,i]-mean(e_p[,i]))**2)
+	  if(length(unique(e[,i]))>2){ mat_p=cbind(mat_p, (e_p[,i]-mean(e_p[,i]))**2)}
    }
    for(i in 1:ncol(z))
    {
       if(length(unique(z[,i]))>2){  mat=cbind(mat, (z[,i]-mean(z[,i]))**2);}
-	  if(length(unique(z[,i]))>2)  mat_p=cbind(mat_p, (z_p[,i]-mean(z_p[,i]))**2)
+	  if(length(unique(z[,i]))>2){  mat_p=cbind(mat_p, (z_p[,i]-mean(z_p[,i]))**2)}
    }
    for(i in 1:ncol(e))
    {

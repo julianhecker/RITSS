@@ -29,12 +29,13 @@ ritss=function(y, x, e, z, ii1, ii2, ii3, cut_off_p_value=0.05, screening_functi
 	###-- update 4/11/2022
 	if(!is.numeric(y)) stop("y is not a numeric vector.")
 	if(var(y)==0) stop("y has no variation.")
-	if(length(unique(y))<=5) stop("current implementation is designed for quantitative traits. y seems so to be discrete.")
+	if(length(unique(y))<=5) stop("current implementation is designed for quantitative traits. y seems to be discrete.")
 	
     if(class(x)[1]!= "matrix") stop("x is not a matrix.")
 	if(class(e)[1]!= "matrix") stop("e is not a matrix.")
 	if(class(z)[1]!= "matrix") stop("z is not a matrix.")
 	if(length(ii1)<100 | length(ii1)<100 | length(ii1)<100) stop("sub samples ii1, ii2, or ii3 too small (<100).")
+	if(length(intersect(ii1, ii2))>0 | length(intersect(ii1, ii3))>0 | length(intersect(ii2, ii3))>0) stop("error: sub samples overlap.")
 	
     m=ncol(x); d=ncol(e); p=ncol(z); n=length(y);
 	if(m<10) stop("please provide at least 10 genetic variants/SNPs.")
@@ -157,9 +158,9 @@ ritss_sub=function(x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, x_3, e_3, z_3, y_3, c
 screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, verbose=FALSE)
 {
    n=nrow(x)
-   if(length(indices_env_factors)!=1) return(NA);
+   if(length(indices_env_factors)!=1) stop("error: only one environmental component allowed for this function.")
    inter_index=indices_env_factors;
-   if(inter_index<1 | inter_index > ncol(e)) return(NA);
+   if(inter_index<1 | inter_index > ncol(e)) stop("error: index for environmental component invalid.")
    
    ############################
    # estimation of betas_x 
