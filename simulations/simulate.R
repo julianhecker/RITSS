@@ -4,13 +4,17 @@
 library(config)
 library(sandwich)
 library(RITSS)
+config <- config::get(file = "../Rconfig.yml")
 
 source("sim_functions.R")
+source("alternative_approaches.R") 
+
 args = commandArgs(trailingOnly=TRUE)
 
 #########################################
-errors=NULL # add non-normal errors 
-select="no"
+pheno=read.table("../UKB_application/data/phenotype_and_covariate_data",as.is=T, header=T, sep="\t")
+errors=pheno$fev1fvc
+errors=errors[!is.na(errors)]
 
 #########################################
 ps=args[1]
@@ -18,6 +22,7 @@ gec=args[2]
 mem=args[3]
 nne=args[4]
 he=args[5]
+select=args[6]
 
 
 ########################################################################
@@ -50,6 +55,7 @@ sd_e_z=0.0
 sd_eps=1.0
 beta_PS=0.0
 
+prop_x=1 ##!#
 prop_e_x=0.2
 prop_e_z=0.5
 
@@ -59,13 +65,13 @@ maf=0.3
 exponent=1
 
 
-seed=as.numeric(1)
+seed=as.numeric(as.numeric(args[7]))
 if(ps=="yes"){beta_PS=1;sd_e_z=0.1;sd_z=0.1;seed=seed+2;}
 if(gec=="yes"){sd_e_x=0.1;seed=seed+4;}
 if(mem=="yes"){exponent=2;seed=seed+8;}
 if(nne=="yes"){seed=seed+16;}
 if(he=="yes"){sd_err_e=0.5;seed=seed+32}
-if(select=="yes"){seed=seed+64;}
+if(select=="yes"){seed=seed+64; prop_x=0.5} ##!#
 
 
 
@@ -78,11 +84,11 @@ n_k=floor(n/3)
 i1=1:n_k
 i2=(n_k+1):(2*n_k)
 i3=(2*n_k+1):n
-results=matrix(0, nrow=n_rep, ncol=8)
+results=matrix(0, nrow=n_rep, ncol=9) 
 for(i in 1:n_rep)
 {
         ### draw parameters and simulate phenotype
-        beta_x=draw_normal_effects(0, sd_x, n_var, 1, FALSE)
+        beta_x=draw_normal_effects(0, sd_x, n_var, prop_x, FALSE)
         beta_e=draw_normal_effects(0, sd_e, n_e, 1, TRUE)
 		beta_z=draw_normal_effects(0, sd_z, n_z, 1, FALSE)
 		beta_err_e=draw_normal_effects(0, sd_err_e, n_e, 1, TRUE)
@@ -115,22 +121,16 @@ for(i in 1:n_rep)
 		
 		####################################################
 		### RITSS
-		ritss_obj=ritss(y, x, e, z, i1, i2, i3, cut_off_p_value=0.05, verbose=FALSE)
+		ritss_obj=ritss(y, x, e, z, i1, i2, i3, config$cut_off_p_value, verbose=config$sim_verbose)
 		################################################
-		
-		### REG and REG-robust
-		xe=ritss_obj$Ui_3
-		fit=lm(y_3~xe+x_3+e_3+z_3)
-		pval_reg_score=summary(fit)$coefficients[2,4]
-		beta_reg_score=summary(fit)$coefficients[2,1]
-		sandwich_se <- diag(vcovHC(fit, type = "HC"))^0.5
-		tmp=beta_reg_score/sandwich_se[2]
-		pval_reg_score_robust=pnorm(-abs(tmp), 0, 1)*2
-		###################################################
-		
+		### alternative_approaches
+		lr=linreg_inter_sv(x, e, z, y, inter_index=1)
+		lr2split=linreg_2split(y, x, e, z)
+		gesat_p=gesat(x, e, z, y)
+		###################################################	  
 		results[i,1]=ritss_obj$z_1; results[i,2]=ritss_obj$z_2; results[i,3]=ritss_obj$z_3; 
 		results[i,4]=ritss_obj$z; results[i,5]=ritss_obj$pval; 
-		results[i,6]=pval_reg_score; results[i,7]=beta_reg_score; results[i,8]=pval_reg_score_robust;
+		results[i,6]=lr; results[i,7]=lr2split$pval; results[i,8]=lr2split$pval_robust; results[i,9]=gesat_p; 
 
 		cat(results[i,], "\n")
 }

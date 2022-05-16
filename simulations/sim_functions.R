@@ -1,9 +1,11 @@
-#### select the n=index variants with the smallest marginal association p-value
+#### select the n=index variants with the smallest marginal association p-value or all genome-wide significant
 select_x=function(y, x, e, z, index)
 {
 		fit=lm(y~x+e+z)
 		pvals_x=summary(fit)$coefficients[2:(ncol(x)+1),4]
+		ngws=sum(pvals_x<=5*10^-8)
 		tmp=sort(pvals_x, decreasing = FALSE)[index]
+		if(ngws>0.3*ncol(x) & ngws<=0.5*ncol(x)){tmp=5*10^-8}
 		return(pvals_x<=tmp)
 		
 }
@@ -82,17 +84,23 @@ get_genetic_effect=function(x, beta_x)
   g=x %*% beta_x
   return(g)
 }
+#### get GxE effect (power studies) ##!#
+get_gxe_effect=function(x, e, beta_xe, beta_x)
+{
+  ge=e[,1] * x %*% (beta_x * beta_xe)
+  return(ge)
+}##!#
 #### get error
 get_error=function(n, sd, beta_err_e, nne=FALSE, errors=numeric(0))
 {
-  eps=rnorm(n)*sd+rnorm(n)*sd*e[,1]*beta_err_e
-  if(nne==TRUE & length(errors)==0) {print("warning: NNE specified but no error provided."); errors=rchisq(n*5,1)}
-  if(nne==TRUE)
+  eps=rnorm(n)*sd*(1+e[,1]*beta_err_e[1])
+  if(nne==TRUE & length(errors)==0) {print("warning: NNE specified but no error provided, using normal errors."); errors=rnorm(n)}
+  if(nne==TRUE) # assumes that length(errors)>=n
   {
      eps=errors[sample(1:length(errors), n, replace=F)]
 	 eps=eps-mean(eps)
 	 eps=eps/sd(eps)*sd
-	 eps=eps+e[,1]*beta_err_e*eps
+	 eps=eps+e[,1]*beta_err_e[1]*eps
   }
   return(eps)
 }
