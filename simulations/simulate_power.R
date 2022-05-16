@@ -1,10 +1,8 @@
 ####################################
 ### load libraries and functions
 
-library(config)
 library(sandwich)
 library(RITSS)
-config <- config::get(file = "../Rconfig.yml")
 
 source("sim_functions.R")
 source("alternative_approaches.R") 
@@ -103,7 +101,7 @@ for(i in 1:n_rep)
 		
 		####################################################
 		### RITSS
-		ritss_obj=ritss(y, x, e, z, i1, i2, i3, config$cut_off_p_value, verbose=config$sim_verbose)
+		ritss_obj=ritss(y, x, e, z, i1, i2, i3, cut_off_p_value=0.05, verbose=FALSE)
 		####################################################
 		### alternative_approaches 
 		lr=linreg_inter_sv(x, e, z, y, inter_index=1)

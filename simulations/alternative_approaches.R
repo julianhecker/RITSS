@@ -1,6 +1,6 @@
 library(iSKAT)
 library(sandwich)
-source("/udd/rejhe/projects/RITSS/R/bestsubsetregression.R")
+source("../R/bestsubsetregression.R")
 
 
 gesat=function(x, e, z, y)

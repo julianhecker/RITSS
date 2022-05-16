@@ -1,10 +1,10 @@
 ####################################
 ### load libraries and functions
 
-library(config)
+##!#
 library(sandwich)
 library(RITSS)
-config <- config::get(file = "../Rconfig.yml")
+##!#
 
 source("sim_functions.R")
 source("alternative_approaches.R") 
@@ -12,9 +12,8 @@ source("alternative_approaches.R")
 args = commandArgs(trailingOnly=TRUE)
 
 #########################################
-pheno=read.table("../UKB_application/data/phenotype_and_covariate_data",as.is=T, header=T, sep="\t")
-errors=pheno$fev1fvc
-errors=errors[!is.na(errors)]
+
+errors=as.numeric(0) ##!# provide non-normal errors (>=n)
 
 #########################################
 ps=args[1]
@@ -121,7 +120,7 @@ for(i in 1:n_rep)
 		
 		####################################################
 		### RITSS
-		ritss_obj=ritss(y, x, e, z, i1, i2, i3, config$cut_off_p_value, verbose=config$sim_verbose)
+		ritss_obj=ritss(y, x, e, z, i1, i2, i3, cut_off_p_value=0.05, verbose=FALSE)
 		################################################
 		### alternative_approaches
 		lr=linreg_inter_sv(x, e, z, y, inter_index=1)
