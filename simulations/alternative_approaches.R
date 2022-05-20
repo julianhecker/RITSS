@@ -33,8 +33,8 @@ linreg_2split=function(y, x, e, z, screening_function=screening_subprs, indices_
   y_2=y[sub_sample_2]; x_2=x[sub_sample_2,]; e_2=e[sub_sample_2,]; z_2=z[sub_sample_2,];
   ##############################################################
   
-  screening_obj1=screening_function(y_1, x_1, e_1, z_1, indices_env_factors, FALSE)
-  screening_obj2=screening_function(y_2, x_2, e_2, z_2, indices_env_factors, FALSE)
+  screening_obj1=screening_function(y_1, x_1, e_1, z_1, indices_env_factors, verbose=FALSE)
+  screening_obj2=screening_function(y_2, x_2, e_2, z_2, indices_env_factors, verbose=FALSE)
   
   number_scores1=length(screening_obj1$mapping_env_factors)
   score_env_mapping1=screening_obj1$mapping_env_factors
@@ -122,7 +122,7 @@ screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, ve
    
    ind_var=tmp$indices_snps[tmp$vars>1/nrow(tmp)] # keep only variants with reasonable variance
    if(length(ind_var)<10){ ind_var=tmp$indices_snps; }###-- update 4/11/2022
-   best_subset_reg=best_subset_reg(yr, xe_r[,ind_var], length(ind_var), num_iterations=10, verbose)
+   best_subset_reg=best_subset_reg(yr, xe_r[,ind_var], length(ind_var))
    
    num_indices=1
    if(length(best_subset_reg$other)>1){num_indices=2}
@@ -143,7 +143,7 @@ screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, ve
   
 }
 # best subset regression
-best_subset_reg=function(yr, xe_r, S_max, num_iterations=10, verbose=FALSE)
+best_subset_reg=function(yr, xe_r, S_max, num_iterations=10)
 {
    indices_snps=1:ncol(xe_r)
    seq_s=seq(10, S_max, by=5)
