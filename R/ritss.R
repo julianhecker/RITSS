@@ -4,16 +4,13 @@
 #' @param x genotype data (can be expected counts).
 #' @param e environmental factors.
 #' @param z additional covariates. For example, genetic principal components.
-#' @param ii1 indices for I_1.
-#' @param ii2 indices for I_2.
-#' @param ii3 indices for I_3. ii1, ii2, and ii3 should NOT overlap.
+#' @param indices partitioning of the n samples into K non-overlapping sub samples
 #' @param cut_off_p_value cut off p-value for the inclusion of scores. The first score is always tested.
 #' @param screening_function function that performs the screening step.
 #' @param indices_env_factors indices of environmental factors that are considered in the screening step.
 #' @param verbose default is FALSE. If TRUE, RITSS outputs more details.
 #'
-#' @return list of objects including RITSS p-value, corresponding z-score. Also individual z-scores of the three substatistics, the three interaction scores, 
-#' and information about the selected variants. z_1, z_2, and z_3 are the z-scores of the three sub statistics. Ui_1 and snps_in_score_i1 correspond to screening step that was performed in I_1 and tested in I_3.
+#' @return list of objects including RITSS p-value and corresponding z-score. 
 #' @export
 #'
 #' @examples
@@ -21,12 +18,12 @@
 #' m=50; d=5; p=5;
 #' y=rnorm(n); x=matrix(rnorm(n*m), nrow=n, ncol=m); 
 #' e=matrix(rnorm(n*d), nrow=n, ncol=d); z=matrix(rnorm(n*p), nrow=n, ncol=p);
-#' ii1=1:5000; ii2=5001:10000; ii3=10001:15000;
-#' ritss(y, x, e, z, ii1, ii2, ii3)
+#' indices=create_splits(K=3, n=n, split_ratio=(1/3, 1/3, 1/3))
+#' ritss(y=y, x=x, e=e, z=z, indices=indices)
 
-ritss=function(y, x, e, z, ii1, ii2, ii3, cut_off_p_value=0.05, screening_function=screening_subprs, indices_env_factors=1, verbose=FALSE)
+ritss=function(y, x, e, z, indices, cut_off_p_value=0.05, screening_function=screening_subprs, indices_env_factors=1, verbose=FALSE)
 {
-	###-- update 4/11/2022
+	
 	if(!is.numeric(y)) stop("y is not a numeric vector.")
 	if(var(y)==0) stop("y has no variation.")
 	if(length(unique(y))<=5) stop("current implementation is designed for quantitative traits. y seems to be discrete.")
@@ -34,8 +31,7 @@ ritss=function(y, x, e, z, ii1, ii2, ii3, cut_off_p_value=0.05, screening_functi
     if(class(x)[1]!= "matrix") stop("x is not a matrix.")
 	if(class(e)[1]!= "matrix") stop("e is not a matrix.")
 	if(class(z)[1]!= "matrix") stop("z is not a matrix.")
-	if(length(ii1)<100 | length(ii1)<100 | length(ii1)<100) stop("sub samples ii1, ii2, or ii3 too small (<100).")
-	if(length(intersect(ii1, ii2))>0 | length(intersect(ii1, ii3))>0 | length(intersect(ii2, ii3))>0) stop("error: sub samples overlap.")
+	
 	
     m=ncol(x); d=ncol(e); p=ncol(z); n=length(y);
 	if(m<10) stop("please provide at least 10 genetic variants/SNPs.")
@@ -43,77 +39,95 @@ ritss=function(y, x, e, z, ii1, ii2, ii3, cut_off_p_value=0.05, screening_functi
 	if(n!=nrow(x) | n!=nrow(e) | n!=nrow(z)) stop("row dimension of x, e, or z does not match length of y.")
 	if(!(indices_env_factors %in% 1:d)) stop("indices_env_factors invalid.")
 	
-    y_1=y[ii1]; y_2=y[ii2]; y_3=y[ii3];
-	x_1=as.matrix(x[ii1,]); x_2=as.matrix(x[ii2,]); x_3=as.matrix(x[ii3,]);
-	e_1=as.matrix(e[ii1,]); e_2=as.matrix(e[ii2,]); e_3=as.matrix(e[ii3,]);
-	z_1=as.matrix(z[ii1,]); z_2=as.matrix(z[ii2,]); z_3=as.matrix(z[ii3,]);
-	###--
+	genetic_signals=rep(0, ncol(x))
+    K=length(indices)
+	sub_objs=list()
+	stat=0; variance=0;
 	
-	obj1=ritss_sub(x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, x_3, e_3, z_3, y_3, cut_off_p_value, screening_function, indices_env_factors, verbose)
-	obj2=ritss_sub(x_3, e_3, z_3, y_3, x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, cut_off_p_value, screening_function, indices_env_factors, verbose)
-	obj3=ritss_sub(x_2, e_2, z_2, y_2, x_3, e_3, z_3, y_3, x_1, e_1, z_1, y_1, cut_off_p_value, screening_function, indices_env_factors, verbose)
-
-	stat=obj1$stat+obj2$stat+obj3$stat
-	variance=obj1$var_est+obj2$var_est+obj3$var_est
+	for(k in 1:K)
+	{
+	     obj=ritss_sub(y=y, x=x, e=e, z=z, inds_test=indices[[k]]$inds_test, inds_screen=indices[[k]]$inds_screen, inds_main=indices[[k]]$inds_main,
+		 inds_ace=indices[[k]]$inds_ace, cut_off_p_value=cut_off_p_value, screening_function=screening_function, indices_env_factors=indices_env_factors, verbose=verbose)
+		 stat=stat + obj$stat
+		 variance=variance + obj$var_est
+		 genetic_signals[obj$snps_in_score]=genetic_signals[obj$snps_in_score]+1
+		 sub_objs[[k]]=list(indices_test=indices[[k]]$inds_test, score=obj$Ui, score_prime=obj$Ui_prime, y_resid=obj$y_resid, 
+		 y_resid_train=obj$y_resid_train, indices_main=indices[[k]]$inds_main, main_effects=obj$main_effects)
+		 
+	}
+	###
+    
 	zsc=stat/sqrt(variance)
     pval_overall=pnorm(-abs(zsc),0,1)*2
 	
-	return(list("pval"=pval_overall, "z"=zsc, "z_1"=obj1$stat/sqrt(obj1$var_est), "z_2"=obj2$stat/sqrt(obj2$var_est), "z_3"=obj3$stat/sqrt(obj3$var_est), 
-	"Ui_1"=obj3$Ui, "Ui_2"=obj2$Ui, "Ui_3"=obj1$Ui, "snps_in_score_i1"=obj3$snps_in_score, "snps_in_score_i2"=obj2$snps_in_score, "snps_in_score_i3"=obj1$snps_in_score))
+	return(list("pval"=pval_overall, "z"=zsc, "genetic_signals"=genetic_signals, "sub_objs"=sub_objs))
 	
 }
-# RITSS function for fixed i_1, i_2, and i_3
-ritss_sub=function(x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, x_3, e_3, z_3, y_3, cut_off_p_value=0.05, screening_function, indices_env_factors, verbose=FALSE)
+
+
+ritss_sub=function(y, x, e, z, inds_test, inds_screen, inds_main, inds_ace, cut_off_p_value=0.05, screening_function=screening_subprs, indices_env_factors=1, verbose=FALSE)
 {
+
   ##############################################################
-  ### part I
-  screening_obj=screening_function(y_1, x_1, e_1, z_1, indices_env_factors, verbose=verbose)
-  if(verbose==TRUE) print("screening step done")
+  ### set up
+  y_test=y[inds_test]; y_screen=y[inds_screen]; y_main=y[inds_main]; y_ace=y[inds_ace];
+  x_test=as.matrix(x[inds_test,]); x_screen=as.matrix(x[inds_screen,]); x_main=as.matrix(x[inds_main,]); x_ace=as.matrix(x[inds_ace,]);
+  e_test=as.matrix(e[inds_test,]); e_screen=as.matrix(e[inds_screen,]); e_main=as.matrix(e[inds_main,]); e_ace=as.matrix(e[inds_ace,]);
+  z_test=as.matrix(z[inds_test,]); z_screen=as.matrix(z[inds_screen,]); z_main=as.matrix(z[inds_main,]); z_ace=as.matrix(z[inds_ace,]);
+  n_var=ncol(x)
+  n_test=length(inds_test)
+
+  ##############################################################
+  ### screening
+  #screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, verbose=FALSE)
+  if(verbose==TRUE) st=Sys.time()
+  screening_obj=screening_function(y=y_screen, x=x_screen, e=e_screen, z=z_screen, indices_env_factors=indices_env_factors, verbose=verbose) ##!#
+  if(verbose==TRUE){et=Sys.time(); cat("screening step done", et-st, "\n");} 
   number_scores=length(screening_obj$mapping_env_factors)
   score_env_mapping=screening_obj$mapping_env_factors
   included_env_factors=unique(score_env_mapping)
   
   ##############################################################
-  ### part II
-
-  n_k=floor(length(y_2)/2)
-  sub_sample_1=1:n_k
-  sub_sample_2=(n_k+1):(length(y_2))
+  ### main effects and ACE
+  if(verbose==TRUE) st=Sys.time()
+  scores_main=matrix(0, nrow=length(y_main), ncol=number_scores)
+  scores_ace=matrix(0, nrow=length(y_ace), ncol=number_scores)
+  scores_test=matrix(0, nrow=length(y_test), ncol=number_scores)
+  scores_x_main=matrix(0, nrow=length(y_main), ncol=number_scores)
+  scores_x_ace=matrix(0, nrow=length(y_ace), ncol=number_scores)
+  scores_x_test=matrix(0, nrow=length(y_test), ncol=number_scores)
   
- 
-  scores_i2=matrix(0, nrow=length(y_2), ncol=number_scores)
-  scores_i3=matrix(0, nrow=length(y_3), ncol=number_scores)
-  scores_x_i2=matrix(0, nrow=length(y_2), ncol=number_scores)
-  scores_x_i3=matrix(0, nrow=length(y_3), ncol=number_scores)
   for(k in 1:number_scores)
   {
      betav=screening_obj$betas[[k]]
 	 env_index=score_env_mapping[k]
-	 scores_i2[,k]=e_2[,env_index] * (as.matrix(x_2) %*% betav)
-	 scores_i3[,k]=e_3[,env_index] * (as.matrix(x_3) %*% betav)
-	 scores_x_i2[,k]=as.matrix(x_2) %*% betav 
-	 scores_x_i3[,k]=as.matrix(x_3) %*% betav 
+	 
+	 scores_main[,k]=e_main[,env_index] * (as.matrix(x_main) %*% betav)
+	 scores_ace[,k]=e_ace[,env_index] * (as.matrix(x_ace) %*% betav)
+	 scores_test[,k]=e_test[,env_index] * (as.matrix(x_test) %*% betav)
+	 
+	 scores_x_main[,k]=as.matrix(x_main) %*% betav 
+	 scores_x_ace[,k]=as.matrix(x_ace) %*% betav 
+	 scores_x_test[,k]=as.matrix(x_test) %*% betav 
   }
- 
-  lasso_obj=lasso_main_effects(as.matrix(scores_i2[sub_sample_1,]), x_2[sub_sample_1,], as.matrix(e_2[sub_sample_1,]), z_2[sub_sample_1,], y_2[sub_sample_1], x_3, e_3, z_3)
+  if(verbose==TRUE){et=Sys.time(); cat("set up step done", et-st, "\n");} 
+  ### main effects
+  #main_effects=function(scores, x, e, z, y, x_p, e_p, z_p)
+  if(verbose==TRUE) st=Sys.time()
+  lasso_obj=main_effects(scores=scores_main, x=x_main, e=e_main, z=z_main, y=y_main, scores_p=scores_test, x_p=x_test, e_p=e_test, z_p=z_test)
+  if(verbose==TRUE){et=Sys.time(); cat("main effects step done", et-st, "\n");} 
   
   pval_score=as.numeric(lasso_obj$pval_scores)
   beta_score=as.numeric(lasso_obj$beta_scores)
-  if(verbose==TRUE) cat("I_2 filter score betas:", beta_score,"\n")
-  if(verbose==TRUE) cat("I_2 filter score p-values:",pval_score,"\n")
-  
+  if(verbose==TRUE) cat("filter score betas:", beta_score,"\n")
+  if(verbose==TRUE) cat("filter score p-values:",pval_score,"\n")
   
   keep_scores=rep(0, number_scores); 
   keep_scores[pval_score<=cut_off_p_value]=1; keep_scores[1]=1; # always keep first score
   beta_score[keep_scores==0]=0
-  beta_score[keep_scores==1]=1 
+  beta_score[keep_scores==1]=1
    
-  
-  
-  ##############################################################
-  ### part III
-  
-  variants_included=rep(0, ncol(x_3))
+  variants_included=rep(0, n_var)
   
   ### interaction score computation
   for(k in 1:number_scores)
@@ -121,40 +135,51 @@ ritss_sub=function(x_1, e_1, z_1, y_1, x_2, e_2, z_2, y_2, x_3, e_3, z_3, y_3, c
      betav=screening_obj$betas[[k]]
 	 if(keep_scores[k]==1) {variants_included[betav!=0]=1}
   }
-  tmp_inds=1:ncol(x_3)
+  tmp_inds=1:n_var
   snps_in_score=tmp_inds[variants_included==1]
   
   if(verbose==TRUE){cat("snps in score:", length(snps_in_score), "\n")}
-  ##############################################################
-  ### projections
-  Ui_i3=scores_i3 %*% beta_score
-  Ui_i3_prime=rep(0, nrow(x_3))
+  
+  ### ACE
+  Ui_test=scores_test %*% beta_score
+  Ui_test_prime=rep(0, n_test)
+  if(verbose==TRUE) st=Sys.time()
   score_tmp_indices=1:number_scores
   for(index in included_env_factors)
   {
      inds=score_tmp_indices[score_env_mapping==index]
 	 if(verbose==TRUE){cat("env.factor: ", index,  inds, beta_score[inds], "\n")}
-	 tmp_Ui_i2=as.matrix(scores_i2[,inds]) %*% as.vector(beta_score[inds])
-	 tmp_Ui_i3=as.matrix(scores_i3[,inds]) %*% as.vector(beta_score[inds])
-	 tmp_score_x_i2=as.matrix(scores_x_i2[,inds]) %*% as.vector(beta_score[inds])
-     tmp_score_x_i3=as.matrix(scores_x_i3[,inds]) %*% as.vector(beta_score[inds])
-	 trained=ACE_train(x_2[sub_sample_2,], as.matrix(e_2[sub_sample_2,]), z_2[sub_sample_2,], tmp_Ui_i2[sub_sample_2], index, tmp_score_x_i2[sub_sample_2])
-     Ui_i3_prime=Ui_i3_prime+ACE_pred(x_3, e_3, z_3, tmp_Ui_i3, trained$rg, trained$rf, trained$rg2,  trained$rg2_indicators, trained$rf2, tmp_score_x_i3)
-	 if(verbose==TRUE) cat("number of selected genetic variants in prediction of e: ", length(trained$x_inds), "\n")
+	 
+	 tmp_Ui_ace=as.matrix(scores_ace[,inds]) %*% as.vector(beta_score[inds])
+	 tmp_Ui_test=as.matrix(scores_test[,inds]) %*% as.vector(beta_score[inds])
+	 
+	 tmp_score_x_ace=as.matrix(scores_x_ace[,inds]) %*% as.vector(beta_score[inds])
+     tmp_score_x_test=as.matrix(scores_x_test[,inds]) %*% as.vector(beta_score[inds])
+	 
+	 ace=ACE(x=x_ace, e=e_ace, z=z_ace, ui=tmp_Ui_ace, index_e=index, score_x=tmp_score_x_ace,
+	 x_p=x_test, e_p=e_test, z_p=z_test, ui_p=tmp_Ui_test, score_x_p=tmp_score_x_test)
+     Ui_test_prime=Ui_test_prime+ace$ui_prime
+	 if(verbose==TRUE) cat("number of selected genetic variants in prediction of e: ", length(ace$x_inds), "\n")
   }
  
- 
-  y_resid=y_3-lasso_obj$predicted_y_main_effects
   
+  y_resid=y_test-lasso_obj$predicted_y_main_effects
+  y_resid_train=y_main-lasso_obj$predicted_y_main_effects_train
+  if(verbose==TRUE){et=Sys.time(); cat("ACE step done", et-st, "\n");}
+  ##############################################################
   ### test statistic computation
-  S=sum(Ui_i3_prime*y_resid)
-  var_est=sum(Ui_i3_prime^2*y_resid^2)
+  
+  S=sum(Ui_test_prime*y_resid)
+  var_est=sum(Ui_test_prime^2*y_resid^2)
   if(verbose==TRUE){cat("S , sd(S): ", S, sqrt(var_est), "\n")}
   
-  return(list("stat"=S, "var_est"=var_est, "betas"=screening_obj$betas, "snps_in_score"=snps_in_score, "Ui"=Ui_i3, "y_resid"=y_resid))
+  return(list("stat"=S, "var_est"=var_est, "betas"=screening_obj$betas, "snps_in_score"=snps_in_score, "Ui"=Ui_test, "Ui_prime"=Ui_test_prime, "y_resid"=y_resid, "y_resid_train"=y_resid_train, 
+  "main_effects"=lasso_obj$predicted_y_main_effects))
  
 }
 # screening step to identify interaction with subcomponent of genetic risk score
+#' screening_subprs
+#' @export
 screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, verbose=FALSE)
 {
    n=nrow(x)
@@ -195,8 +220,9 @@ screening_subprs=function(y, x, e, z, indices_env_factors, num_iterations=10, ve
   
    
    ind_var=tmp$indices_snps[tmp$vars>1/nrow(tmp)] # keep only variants with reasonable variance
-   if(length(ind_var)<10){ ind_var=tmp$indices_snps; }###-- update 4/11/2022
-   best_subset_reg=best_subset_reg(yr, xe_r[,ind_var], length(ind_var))
+   if(length(ind_var)<10){ ind_var=tmp$indices_snps; }
+   
+   best_subset_reg=best_subset_reg(yr=yr, xe_r=xe_r[,ind_var], S_max=length(ind_var))
    
    num_indices=1
    if(length(best_subset_reg$other)>1){num_indices=2}
@@ -232,21 +258,20 @@ best_subset_reg=function(yr, xe_r, S_max, num_iterations=10)
 		test_x <- xe_r[testIndexes, ]; test_y= yr[testIndexes]; 
 		train_x <- xe_r[-testIndexes, ]; train_y= yr[-testIndexes];
 		
-		L=get_L(train_y, train_x)
+		C=get_C(train_y, train_x)
 	    start_beta=rep(0, ncol(xe_r))
 		ctr=0
-	    for(s in seq_s)
+	    for(size in seq_s)
 	    {
-			beta_tmp=gradient_algorithm(train_y, train_x, start_beta, L, s, num_iterations);
+			
+			beta_tmp=gradient_algorithm(y=train_y, x=train_x, start_beta=start_beta, C=C, size=size, n_iter=num_iterations);
 			tmp_inds=indices_snps[beta_tmp!=0]
 			
 			score=rowSums(test_x[, tmp_inds])
 			fit=lm(test_y~score)
 			z_sq=summary(fit)$coefficients[2,3]**2
 			
-			score_train=rowSums(train_x[, tmp_inds])
-			fit=lm(train_y~score_train)
-			z_sq_train=summary(fit)$coefficients[2,3]**2
+			
 			ind=rep(0, ncol(xe_r))
 			ind[tmp_inds]=1;
 			
@@ -268,4 +293,83 @@ best_subset_reg=function(yr, xe_r, S_max, num_iterations=10)
    if(length(inter_ind)<5 | length(other_ind)<5){inter_ind=c(inter_ind, other_ind); other_ind=numeric(0)}
    
    return(list("inter"=inter_ind, "other"=other_ind))
+}
+
+# screening based on single variant GxE tests
+#' screening_sv
+#' @export
+screening_sv=function(y, x, e, z, indices_env_factors, fdr_cutoff1=0.05, fdr_cutoff2=0.1, verbose=FALSE)
+{
+   n=nrow(x)
+   if(length(indices_env_factors)!=1) stop("error: only one environmental component allowed for this function.")
+   inter_index=indices_env_factors;
+   if(inter_index<1 | inter_index > ncol(e)) stop("error: index for environmental component invalid.")
+   
+   ############################
+  
+   e_t=e[,inter_index]
+   pval=rep(0, ncol(x))
+   coef=rep(0, ncol(x))
+   for(i in 1:ncol(x))
+   {
+		xe=x[,i]*e_t
+		fit=lm(y~xe+x[,i]+e+z)
+		pval[i]=summary(fit)$coefficients[2,4]
+		coef[i]=summary(fit)$coefficients[2,1]
+   }
+   pval_adj=p.adjust(pval, method="BH")
+   n1=sum(pval_adj<=fdr_cutoff1)
+   n2=sum(pval_adj>fdr_cutoff1 & pval_adj<=fdr_cutoff2)
+   mm1=pval_adj<=fdr_cutoff1
+   mm2=pval_adj>fdr_cutoff1 & pval_adj<=fdr_cutoff2
+   if(n1==0 & n2==0)
+   {
+      mm1=pval_adj==min(pval_adj)
+	  n1=sum(mm1)
+	  n2=0
+   }
+   if(n1==0 & n2>0)
+   {
+      mm1=pval_adj<=fdr_cutoff2
+	  n1=sum(mm1)
+	  n2=0
+   }
+   
+   num_indices=1
+   if(n1>0 & n2>0){num_indices=2}
+   indices=matrix(0, nrow=num_indices, ncol=ncol(x))
+   indices[1, mm1]=1
+   if(num_indices==2){indices[2, mm2]=1}
+   
+   if(verbose==TRUE) print("screening done")
+   
+   beta_1=rep(0, ncol(x));
+   beta_2=rep(0, ncol(x));
+   beta_1[indices[1,]==1]=coef[indices[1,]==1];
+   if(num_indices==2) beta_2[indices[2,]==1]=coef[indices[2,]==1]
+   mapping=rep(0, num_indices)
+   mapping[1]=inter_index;
+   if(num_indices==2) mapping[2]=inter_index;
+   
+   return(list("betas"=list(beta_1, beta_2), "mapping_env_factors"=mapping))
+  
+}
+
+# create sample splits according to prespecified fractions and K
+#' create_splits
+#' @export
+create_splits=function(K, n, split_ratio)
+{
+    folds=sample(cut(seq(1,n),breaks=K,labels=FALSE))
+	inds=1:n
+	indices=list()
+	for(k in 1:K)
+	{
+	   tmp=inds[folds==k]
+	   tmpc=inds[folds!=k]
+	   splits=sample(1:3, size=length(tmpc), replace=TRUE, prob=split_ratio)
+	   tmp=list(inds_screen=tmpc[splits==1], inds_main=tmpc[splits==2], inds_ace=tmpc[splits==3], inds_test=tmp)
+	   indices[[k]]=tmp
+	}
+	return(indices)
 }

@@ -8,7 +8,7 @@ Description: Performs robust interaction testing for quantitative traits using s
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.2.0
 Imports: 
     glmnet,
-    grf
+    mgcv

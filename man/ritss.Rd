@@ -9,9 +9,7 @@ ritss(
   x,
   e,
   z,
-  ii1,
-  ii2,
-  ii3,
+  indices,
   cut_off_p_value = 0.05,
   screening_function = screening_subprs,
   indices_env_factors = 1,
@@ -27,11 +25,7 @@ ritss(
 
 \item{z}{additional covariates. For example, genetic principal components.}
 
-\item{ii1}{indices for I_1.}
-
-\item{ii2}{indices for I_2.}
-
-\item{ii3}{indices for I_3. ii1, ii2, and ii3 should NOT overlap.}
+\item{indices}{partitioning of the n samples into K non-overlapping sub samples}
 
 \item{cut_off_p_value}{cut off p-value for the inclusion of scores. The first score is always tested.}
 
@@ -42,8 +36,7 @@ ritss(
 \item{verbose}{default is FALSE. If TRUE, RITSS outputs more details.}
 }
 \value{
-list of objects including RITSS p-value, corresponding z-score. Also individual z-scores of the three substatistics, the three interaction scores,
-and information about the selected variants. z_1, z_2, and z_3 are the z-scores of the three sub statistics. Ui_1 and snps_in_score_i1 correspond to screening step that was performed in I_1 and tested in I_3.
+list of objects including RITSS p-value and corresponding z-score.
 }
 \description{
 RITSS
@@ -53,6 +46,6 @@ n=15000
 m=50; d=5; p=5;
 y=rnorm(n); x=matrix(rnorm(n*m), nrow=n, ncol=m); 
 e=matrix(rnorm(n*d), nrow=n, ncol=d); z=matrix(rnorm(n*p), nrow=n, ncol=p);
-ii1=1:5000; ii2=5001:10000; ii3=10001:15000;
-ritss(y, x, e, z, ii1, ii2, ii3)
+indices=create_splits(K=3, n=n, split_ratio=(1/3, 1/3, 1/3))
+ritss(y=y, x=x, e=e, z=z, indices=indices)
 }

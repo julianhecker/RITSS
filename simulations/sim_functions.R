@@ -1,4 +1,4 @@
-#### select the n=index variants with the smallest marginal association p-value or all genome-wide significant
+#### select n=index variants with the smallest marginal association p-value or all genome-wide significant
 select_x=function(y, x, e, z, index)
 {
 		fit=lm(y~x+e+z)
@@ -12,14 +12,15 @@ select_x=function(y, x, e, z, index)
 #### generate z
 draw_z=function(min, max, n_z, n)
 {
-    z=matrix(runif(n * n_z, min=min, max=max), nrow=n, ncol=n_z)
+    z=matrix(runif(n*n_z, min=min, max=max), nrow=n, ncol=n_z)
 	return(z)
 }
 #### generate x given z
 draw_x_given_z=function(z, n_var, beta_PS, maf)
 {
    n_z=ncol(z); n=nrow(z)
-   seq=rep(1:n_z, n_var/n_z)
+   seq=(1:n_var %% n_z)
+   seq[seq==0]=n_z
    mafs=matrix(maf, nrow=n, ncol=n_var)+beta_PS*z[,seq]
    x=matrix(0, nrow=n, ncol=n_var)
    for(i in 1:ncol(x)){x[,i]=rbinom(n, 2, mafs[,i])}
@@ -45,6 +46,17 @@ draw_normal_effects=function(mean, sd, m, proportion, sign=FALSE)
    if(sign==TRUE){ beta=abs(beta)}
    return(beta)
 }
+#### normally distributed effects for GxE
+draw_normal_effects_for_gxe=function(mean, sd, m, proportion, main_effects, sign=FALSE)
+{
+   beta=rnorm(m, mean, sd)
+   non_zero=sum(abs(main_effects)>0)
+   ind=rbinom(non_zero, 1, proportion)
+   beta[abs(main_effects)==0]=0
+   beta[abs(main_effects)>0][ind==0]=0
+   if(sign==TRUE){ beta=abs(beta)}
+   return(beta)
+}
 #### normally distributed effects (matrix)
 draw_normal_effects_matrix=function(mean, sd, m, ncol, proportion, sign=FALSE)
 {
@@ -58,9 +70,10 @@ draw_normal_effects_matrix=function(mean, sd, m, ncol, proportion, sign=FALSE)
    return(beta)
 }
 #### get environmental main effect
-get_environmental_effect=function(e, exponent, beta_e)
+get_environmental_effect=function(e, mem, beta_e)
 {
-   env_e=beta_e[1]*e[,1]^exponent
+   if(mem==0){ env_e=beta_e[1]*e[,1]}
+   if(mem==1){ env_e=beta_e[1]*e[,1]**2}
    
    n_e=ncol(e)
    if(n_e>=2)
@@ -84,12 +97,12 @@ get_genetic_effect=function(x, beta_x)
   g=x %*% beta_x
   return(g)
 }
-#### get GxE effect (power studies) ##!#
+#### get GxE effect (power studies) 
 get_gxe_effect=function(x, e, beta_xe, beta_x)
 {
   ge=e[,1] * x %*% (beta_x * beta_xe)
   return(ge)
-}##!#
+}
 #### get error
 get_error=function(n, sd, beta_err_e, nne=FALSE, errors=numeric(0))
 {
@@ -97,10 +110,11 @@ get_error=function(n, sd, beta_err_e, nne=FALSE, errors=numeric(0))
   if(nne==TRUE & length(errors)==0) {print("warning: NNE specified but no error provided, using normal errors."); errors=rnorm(n)}
   if(nne==TRUE) # assumes that length(errors)>=n
   {
+	 if(length(errors)<n){print("warning: length(errors) smaller than n.");}
      eps=errors[sample(1:length(errors), n, replace=F)]
 	 eps=eps-mean(eps)
 	 eps=eps/sd(eps)*sd
-	 eps=eps+e[,1]*beta_err_e[1]*eps
+	 eps=eps*(1+e[,1]*beta_err_e[1])
   }
   return(eps)
 }
