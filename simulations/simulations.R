@@ -105,7 +105,7 @@ for(i in 1:n_rep)
 		env_z=get_covariate_effect(z=z, beta_z=beta_z) 
 		genetic=get_genetic_effect(x=x, beta_x=beta_x)
 		gxe=get_gxe_effect(x=x, e=e, beta_xe=beta_xe, beta_x=beta_x) 
-		eps=get_error(n=n, sd=sd_eps, beta_err_e=beta_err_e, nne=nne, errors=errors)
+		eps=get_error(n=n, sd=sd_eps, e=e, beta_err_e=beta_err_e, nne=nne, errors=errors)
 
 		y=genetic + gxe + env_e + env_z + eps
 		y=as.numeric(y)
@@ -117,7 +117,7 @@ for(i in 1:n_rep)
 		   x=x[,inds]
 		}
 		###
-		
+		if(config$sim_verbose){cat(dim(x), "\n")}
 		####################################################
 		### RITSS
 		
@@ -144,10 +144,10 @@ for(i in 1:n_rep)
 		results[i,7]=results[i,8]=results[i,9]=results[i,10]=-9
 		if(select=="no")
 		{
-			results[i,7]=sum(ritss_obj1$genetic_signals[abs(beta_xe)>0]>(K_param-1))/sum(abs(beta_xe>0))
-			results[i,8]=sum(ritss_obj1$genetic_signals[abs(beta_xe)==0]>(K_param-1))/sum(abs(beta_xe==0))
-			results[i,9]=sum(ritss_obj2$genetic_signals[abs(beta_xe)>0]>(K_param-1))/sum(abs(beta_xe>0))
-			results[i,10]=sum(ritss_obj2$genetic_signals[abs(beta_xe)==0]>(K_param-1))/sum(abs(beta_xe==0))
+			results[i,7]=sum(ritss_obj1$genetic_signals[abs(beta_xe)>0]>(K_param-1))/sum(abs(beta_xe)>0)
+			results[i,8]=sum(ritss_obj1$genetic_signals[abs(beta_xe)==0]>(K_param-1))/sum(abs(beta_xe)==0)
+			results[i,9]=sum(ritss_obj2$genetic_signals[abs(beta_xe)>0]>(K_param-1))/sum(abs(beta_xe)>0)
+			results[i,10]=sum(ritss_obj2$genetic_signals[abs(beta_xe)==0]>(K_param-1))/sum(abs(beta_xe)==0)
 		}
 		
 	

@@ -104,7 +104,7 @@ get_gxe_effect=function(x, e, beta_xe, beta_x)
   return(ge)
 }
 #### get error
-get_error=function(n, sd, beta_err_e, nne=FALSE, errors=numeric(0))
+get_error=function(n, sd, e, beta_err_e, nne=FALSE, errors=numeric(0))
 {
   eps=rnorm(n)*sd*(1+e[,1]*beta_err_e[1])
   if(nne==TRUE & length(errors)==0) {print("warning: NNE specified but no error provided, using normal errors."); errors=rnorm(n)}
