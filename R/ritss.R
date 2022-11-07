@@ -317,7 +317,7 @@ screening_sv=function(y, x, e, z, indices_env_factors, fdr_cutoff1=0.05, fdr_cut
 		pval[i]=summary(fit)$coefficients[2,4]
 		coef[i]=summary(fit)$coefficients[2,1]
    }
-   pval_adj=p.adjust(pval, method="BH")
+   pval_adj=p.adjust(pval, method="BH") # equals qvalue(pval, pi0=1) in "qvalue" R package
    n1=sum(pval_adj<=fdr_cutoff1)
    n2=sum(pval_adj>fdr_cutoff1 & pval_adj<=fdr_cutoff2)
    mm1=pval_adj<=fdr_cutoff1
